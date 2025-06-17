@@ -1,0 +1,8 @@
+agent MyAgent {
+    memory:
+        name = "Srijon Kumar Shill"
+        age = 17
+    goal: "Win MIT Scholarship"
+    on event "user_message" as handle_input:
+        respond using GPT: "You said: {message}"
+}
