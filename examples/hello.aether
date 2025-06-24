@@ -1,8 +1,26 @@
-agent MyAgent {
+agent MyAgent {  
+    memory:  
+        name = "Srijon Kumar Shill"  
+        age = 17  
+    goal: "Win MIT Scholarship"  
+    on event "user_message" as handle_input:  
+        respond using GPT: "You said: {message}"  
+}
+
+agent TutorBot {
     memory:
-        name = "Srijon Kumar Shill"
-        age = 17
-    goal: "Win MIT Scholarship"
+        subject = "Math"
+        level = "High School"
+    goal: "Help students learn effectively"
     on event "user_message" as handle_input:
-        respond using GPT: "You said: {message}"
+        respond using GPT: "I'm your {subject} tutor. You said: {message}"
+}
+
+agent HealthHelper {
+    memory:
+        name = "FitAI"
+        focus = "mental health"
+    goal: "Improve user well-being"
+    on event "user_message" as handle_input:
+        respond using GPT: "Hi, I'm {name}, your assistant for {focus}. You said: {message}"
 }

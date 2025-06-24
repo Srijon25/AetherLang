@@ -36,14 +36,17 @@ parser = Lark(aether_grammar, start="start")
 # Step 2: Transform tree into Python objects
 class AetherTransformer(Transformer):
     def __init__(self):
-        self.agent = {}
+        self.agents = []
+        self.current_agent = {}
 
     def agent_def(self, items):
         name = items[0]
-        self.agent["name"] = str(name)
-        return self.agent
+        self.current_agent["name"] = str(name)
+        self.agents.append(self.current_agent)
+        self.current_agent = {}  # Reset for next agent
+
     def memory_block(self, items):
-        self.agent["memory"] = dict(items)
+        self.current_agent["memory"] = dict(items)
 
     def var_assign(self, items):
         return (str(items[0]), items[1])
@@ -55,12 +58,15 @@ class AetherTransformer(Transformer):
         return list(items)
 
     def goal_block(self, items):
-        self.agent["goal"] = str(items[0])[1:-1]
+        self.current_agent["goal"] = str(items[0])[1:-1]
 
     def event_block(self, items):
         event_name = str(items[0])[1:-1]
         response = str(items[2])[1:-1]
-        self.agent.setdefault("events", {})[event_name] = response
+        self.current_agent.setdefault("events", {})[event_name] = response
+
+    def start(self, items):
+        return self.agents  # Return all agents
 
 # Step 3: Simulate execution
 def run_agent(agent):
@@ -74,7 +80,7 @@ def run_agent(agent):
             print("👋 Exiting agent.")
             break
 
-        event_key = "user_message"
+        event_key = user_input.lower()
         if event_key in agent.get("events", {}):
             template = agent["events"][event_key]
             response = template.replace("{message}", user_input)
@@ -85,11 +91,19 @@ def run_agent(agent):
 def main():
     with open("examples/hello.aether") as f:
         code = f.read()
+    
     tree = parser.parse(code)
-    transformer = AetherTransformer()
-    transformer.transform(tree)
-    agent = transformer.agent
-    run_agent(agent)
+    transformer = AetherTransformer()           # ✅ 1. Create transformer
+    agents = transformer.transform(tree)        # ✅ 2. Parse agents
+
+    print("🤖 Available Agents:")
+    for i, ag in enumerate(agents):             # ✅ 3. Show agent list
+        print(f"  {i+1}. {ag['name']}")
+
+    selected = int(input("Select agent number: ")) - 1
+    run_agent(agents[selected])                 # ✅ 4. Run selected agent
+
+
 
 if __name__ == "__main__":
     main()
