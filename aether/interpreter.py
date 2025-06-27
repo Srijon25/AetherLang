@@ -75,15 +75,19 @@ def run_agent(agent):
     print(f"🎯 Goal: {agent.get('goal', '')}")
 
     while True:
-        user_input = input("🗣️ Event: ")
-        if user_input.lower() == "exit":
+        user_input = input("🗣️ Event: ").strip().lower()
+        if user_input == "exit":
             print("👋 Exiting agent.")
             break
 
-        event_key = user_input.lower()
-        if event_key in agent.get("events", {}):
-            template = agent["events"][event_key]
-            response = template.replace("{message}", user_input)
+        if user_input in agent.get("events", {}):
+            template = agent["events"][user_input]
+            response = template
+
+            # Inject memory values
+            for key, value in agent.get("memory", {}).items():
+                response = response.replace(f"{{{key}}}", str(value))
+
             print(f"🤖 Response: {response}")
         else:
             print("🤖 No event handler for that input.")
@@ -95,7 +99,7 @@ def main():
     tree = parser.parse(code)
     transformer = AetherTransformer()           # ✅ 1. Create transformer
     agents = transformer.transform(tree)        # ✅ 2. Parse agents
-
+    
     print("🤖 Available Agents:")
     for i, ag in enumerate(agents):             # ✅ 3. Show agent list
         print(f"  {i+1}. {ag['name']}")
