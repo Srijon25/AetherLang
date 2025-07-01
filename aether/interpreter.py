@@ -1,3 +1,4 @@
+from gpt_engine import call_gpt
 from lark import Lark, Transformer
 import json
 
@@ -82,12 +83,18 @@ def run_agent(agent):
 
         if user_input in agent.get("events", {}):
             template = agent["events"][user_input]
-            response = template
+            memory = agent.get("memory", {})
+            memory_str = ", ".join(f"{k}: {v}" for k, v in memory.items())
+            goal = agent.get("goal", "None")
 
-            # Inject memory values
-            for key, value in agent.get("memory", {}).items():
-                response = response.replace(f"{{{key}}}", str(value))
+            prompt = f"""
+            You are an AI agent with the goal: "{goal}"
+            Your memory: {memory_str}
+            The user said: "{user_input}"
+            Respond using this template: "{template}"
+            """
 
+            response = call_gpt(prompt)
             print(f"🤖 Response: {response}")
         else:
             print("🤖 No event handler for that input.")
