@@ -3,6 +3,9 @@ agent MyAgent {
         name = "Srijon Kumar Shill"
         age = 17
     goal: "Win MIT Scholarship"
+
+    think using GPT: "Think of 3 creative strategies a 17-year-old can use to get a full MIT scholarship."
+
     on event "hello" as handle_input:
         respond using GPT: "You said hello, {name}!"
 }
@@ -12,6 +15,9 @@ agent TutorBot {
         subject = "Math"
         level = "High School"
     goal: "Help students learn effectively"
+
+    think using GPT: "Think of 3 methods to make {subject} more engaging for {level} students."
+
     on event "ask" as handle_input:
         respond using GPT: "I'm your {subject} tutor. You asked a question."
 }
@@ -21,6 +27,9 @@ agent HealthHelper {
         name = "FitAI"
         focus = "mental health"
     goal: "Improve user well-being"
+
+    think using GPT: "Come up with a daily check-in strategy to improve user {focus}."
+
     on event "status" as handle_input:
         respond using GPT: "Hi, I'm {name}, your assistant for {focus}. How are you feeling?"
 }

@@ -10,11 +10,13 @@ statement: agent_def
 
 agent_def: "agent" CNAME "{" agent_body "}"
 
-agent_body: memory_block? goal_block? event_block*
+agent_body: memory_block? goal_block? think_block? event_block*
 
 memory_block: "memory:" var_assign*
 
 goal_block: "goal:" ESCAPED_STRING
+
+think_block: "think" "using" "GPT" ":" ESCAPED_STRING
 
 event_block: "on" "event" ESCAPED_STRING "as" CNAME ":" "respond" "using" "GPT" ":" ESCAPED_STRING
 
@@ -68,6 +70,9 @@ class AetherTransformer(Transformer):
 
     def start(self, items):
         return self.agents  # Return all agents
+    
+    def think_block(self, items):
+        self.current_agent["thought"] = str(items[0])[1:-1]
 
 # Step 3: Simulate execution
 def run_agent(agent):
@@ -82,20 +87,58 @@ def run_agent(agent):
             break
 
         if user_input in agent.get("events", {}):
+            # 🧠 Dynamic thinking using GPT
+            if "thought" in agent:
+                print("🧠 Agent is thinking...")
+                memory_snapshot = ", ".join(f"{k}: {v}" for k, v in agent.get("memory", {}).items())
+                thinking_prompt = f"""
+Agent memory: {memory_snapshot}
+User said: "{user_input}"
+Think: {agent['thought']}
+"""
+                thought = call_gpt(thinking_prompt)
+                print(f"🧠 Thought: {thought}")
+
+            # 🧩 Get the template
             template = agent["events"][user_input]
             memory = agent.get("memory", {})
-            memory_str = ", ".join(f"{k}: {v}" for k, v in memory.items())
             goal = agent.get("goal", "None")
 
-            prompt = f"""
-            You are an AI agent with the goal: "{goal}"
-            Your memory: {memory_str}
-            The user said: "{user_input}"
-            Respond using this template: "{template}"
-            """
+            # 🧠 Fill in placeholders using memory
+            for k, v in memory.items():
+                template = template.replace(f"{{{k}}}", str(v))
 
+            memory_str = ", ".join(f"{k}: {v}" for k, v in memory.items())
+
+            # 🗨️ Construct full GPT prompt
+            prompt = f"""
+You are an AI agent with the goal: "{goal}"
+Your memory: {memory_str}
+The user said: "{user_input}"
+Respond using this template: "{template}"
+"""
+
+            # 🤖 Get the GPT response
             response = call_gpt(prompt)
             print(f"🤖 Response: {response}")
+
+            # 🧠 Memory update via GPT
+            update_prompt = f"""
+Here is the current memory: {memory_str}
+User said: "{user_input}"
+Agent responded: "{response}"
+Suggest ONE key-value update to the memory. Format as JSON: {{"key": "value"}}
+If no update, return {{}}
+"""
+            mem_update = call_gpt(update_prompt)
+
+            try:
+                update = json.loads(mem_update)
+                agent["memory"].update(update)
+                if update:
+                    print(f"🧠 Memory updated: {update}")
+            except:
+                print("⚠️ Could not update memory.")
         else:
             print("🤖 No event handler for that input.")
 # Step 4: Read and run
