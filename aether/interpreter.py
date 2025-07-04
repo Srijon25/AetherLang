@@ -10,13 +10,15 @@ statement: agent_def
 
 agent_def: "agent" CNAME "{" agent_body "}"
 
-agent_body: memory_block? goal_block? think_block? event_block*
+agent_body: memory_block? goal_block? think_block? reflect_block? event_block*
 
 memory_block: "memory:" var_assign*
 
 goal_block: "goal:" ESCAPED_STRING
 
 think_block: "think" "using" "GPT" ":" ESCAPED_STRING
+
+reflect_block: "reflect" "using" "GPT" ":" ESCAPED_STRING
 
 event_block: "on" "event" ESCAPED_STRING "as" CNAME ":" "respond" "using" "GPT" ":" ESCAPED_STRING
 
@@ -55,7 +57,10 @@ class AetherTransformer(Transformer):
         return (str(items[0]), items[1])
 
     def value(self, val):
-        return val[0]
+        v = val[0]
+        if v.type == 'ESCAPED_STRING':
+         return v[1:-1]  # strip surrounding quotes
+        return float(v) if v.type == 'SIGNED_NUMBER' else str(v)
 
     def list(self, items):
         return list(items)
@@ -73,6 +78,9 @@ class AetherTransformer(Transformer):
     
     def think_block(self, items):
         self.current_agent["thought"] = str(items[0])[1:-1]
+
+    def reflect_block(self, items):
+        self.current_agent["reflect"] = str(items[0])[1:-1]    
 
 # Step 3: Simulate execution
 def run_agent(agent):
@@ -136,10 +144,23 @@ If no update, return {{}}
                 update = json.loads(mem_update)
                 agent["memory"].update(update)
                 if update:
-                    print(f"🧠 Memory updated: {update}")
+                   print(f"🧠 Memory updated: {update}")
             except:
-                print("⚠️ Could not update memory.")
-        else:
+             print("⚠️ Could not update memory.")
+
+# 🪞 Reflect on memory if defined
+            if "reflect" in agent:
+             reflect_prompt = f"""
+Agent memory:
+    {json.dumps(agent.get('memory', {}), indent=2)}
+
+Goal: {agent.get('goal', '')}
+
+Now: {agent['reflect']}
+"""
+            reflection = call_gpt(reflect_prompt)
+            print(f"🪞 Reflection: {reflection}")
+    else:
             print("🤖 No event handler for that input.")
 # Step 4: Read and run
 def main():
