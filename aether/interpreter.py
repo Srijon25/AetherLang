@@ -1,5 +1,7 @@
 from gpt_engine import call_gpt
 from lark import Lark, Transformer
+import threading
+import time
 import json
 
 # Define the grammar again (same as in lexer.py)
@@ -10,7 +12,7 @@ statement: agent_def
 
 agent_def: "agent" CNAME "{" agent_body "}"
 
-agent_body: memory_block? goal_block? think_block? reflect_block? event_block*
+agent_body: memory_block? goal_block? think_block? reflect_block? event_block* schedule_block*
 
 memory_block: "memory:" var_assign*
 
@@ -21,6 +23,8 @@ think_block: "think" "using" "GPT" ":" ESCAPED_STRING
 reflect_block: "reflect" "using" "GPT" ":" ESCAPED_STRING
 
 event_block: "on" "event" ESCAPED_STRING "as" CNAME ":" "respond" "using" "GPT" ":" ESCAPED_STRING
+
+schedule_block: "every" SIGNED_NUMBER "s:" "recall" ESCAPED_STRING
 
 var_assign: CNAME "=" value
 
@@ -82,12 +86,37 @@ class AetherTransformer(Transformer):
     def reflect_block(self, items):
         self.current_agent["reflect"] = str(items[0])[1:-1]    
 
+    def schedule_block(self, items):
+        interval = int(items[0])
+        key = items[1][1:-1] # Use .value to get the actual string content from the token
+        self.current_agent.setdefault("schedule", []).append((interval, key))
+
 # Step 3: Simulate execution
 def run_agent(agent):
     print(f"\n👾 Agent Name: {agent['name']}")
     print(f"🧠 Memory: {agent.get('memory', {})}")
     print(f"🎯 Goal: {agent.get('goal', '')}")
 
+    # ⏰ Background scheduler for time-based recalls
+    def run_schedule(agent):
+        for interval, key in agent.get("schedule", []):
+            print(f"👀 Starting scheduled recall every {interval}s for key '{key}'")
+
+            def task(interval=interval, key=key):
+              while True:
+               if key in agent.get("memory", {}):
+                print(f"\n⏰ Scheduled recall [{interval}s]: {key} ➜ {agent['memory'][key]}")
+        time.sleep(interval)
+        if key in agent.get("memory", {}):
+                        print(f"\n⏰ Scheduled recall [{interval}s]: {key} ➜ {agent['memory'][key]}")
+        threading.Thread(target=task, daemon=True).start()
+
+    # ✅ Start the schedule thread
+
+    
+    run_schedule(agent)
+
+    # 🧠 Start the interaction loop
     while True:
         user_input = input("🗣️ Event: ").strip().lower()
         if user_input == "exit":
@@ -95,7 +124,7 @@ def run_agent(agent):
             break
 
         if user_input in agent.get("events", {}):
-            # 🧠 Dynamic thinking using GPT
+            # 🧠 GPT thinking
             if "thought" in agent:
                 print("🧠 Agent is thinking...")
                 memory_snapshot = ", ".join(f"{k}: {v}" for k, v in agent.get("memory", {}).items())
@@ -107,30 +136,26 @@ Think: {agent['thought']}
                 thought = call_gpt(thinking_prompt)
                 print(f"🧠 Thought: {thought}")
 
-            # 🧩 Get the template
+            # 🧩 Process template
             template = agent["events"][user_input]
             memory = agent.get("memory", {})
             goal = agent.get("goal", "None")
 
-            # 🧠 Fill in placeholders using memory
             for k, v in memory.items():
                 template = template.replace(f"{{{k}}}", str(v))
 
             memory_str = ", ".join(f"{k}: {v}" for k, v in memory.items())
 
-            # 🗨️ Construct full GPT prompt
             prompt = f"""
 You are an AI agent with the goal: "{goal}"
 Your memory: {memory_str}
 The user said: "{user_input}"
 Respond using this template: "{template}"
 """
-
-            # 🤖 Get the GPT response
             response = call_gpt(prompt)
             print(f"🤖 Response: {response}")
 
-            # 🧠 Memory update via GPT
+            # 🧠 Memory update
             update_prompt = f"""
 Here is the current memory: {memory_str}
 User said: "{user_input}"
@@ -139,28 +164,27 @@ Suggest ONE key-value update to the memory. Format as JSON: {{"key": "value"}}
 If no update, return {{}}
 """
             mem_update = call_gpt(update_prompt)
-
             try:
                 update = json.loads(mem_update)
                 agent["memory"].update(update)
                 if update:
-                   print(f"🧠 Memory updated: {update}")
+                    print(f"🧠 Memory updated: {update}")
             except:
-             print("⚠️ Could not update memory.")
+                print("⚠️ Could not update memory.")
 
-# 🪞 Reflect on memory if defined
+            # 🪞 Reflection
             if "reflect" in agent:
-             reflect_prompt = f"""
+                reflect_prompt = f"""
 Agent memory:
-    {json.dumps(agent.get('memory', {}), indent=2)}
+{json.dumps(agent.get('memory', {}), indent=2)}
 
 Goal: {agent.get('goal', '')}
 
 Now: {agent['reflect']}
 """
-            reflection = call_gpt(reflect_prompt)
-            print(f"🪞 Reflection: {reflection}")
-    else:
+                reflection = call_gpt(reflect_prompt)
+                print(f"🪞 Reflection: {reflection}")
+        else:
             print("🤖 No event handler for that input.")
 # Step 4: Read and run
 def main():
