@@ -88,8 +88,8 @@ class AetherTransformer(Transformer):
 
     def schedule_block(self, items):
         interval = int(items[0])
-        key = items[1][1:-1] # Use .value to get the actual string content from the token
-        self.current_agent.setdefault("schedule", []).append((interval, key))
+        key = str(items[1])[1:-1]  # remove quotes from key
+        self.current_agent.setdefault("schedule", []).append((interval, key))    
 
 # Step 3: Simulate execution
 def run_agent(agent):
@@ -103,17 +103,19 @@ def run_agent(agent):
             print(f"👀 Starting scheduled recall every {interval}s for key '{key}'")
 
             def task(interval=interval, key=key):
-              while True:
-               if key in agent.get("memory", {}):
-                print(f"\n⏰ Scheduled recall [{interval}s]: {key} ➜ {agent['memory'][key]}")
-        time.sleep(interval)
-        if key in agent.get("memory", {}):
-                        print(f"\n⏰ Scheduled recall [{interval}s]: {key} ➜ {agent['memory'][key]}")
-        threading.Thread(target=task, daemon=True).start()
+                while True:
+                    time.sleep(interval)
+                    if key in agent.get("memory", {}):
+                     value = agent["memory"][key]
+                    elif key == "goal":
+                     value = agent.get("goal")
+                    else:
+                     value = "[Unknown]"
+
+                    print(f"\n⏰ Scheduled recall [{interval}s]: {key} ➜ {value}")
+            threading.Thread(target=task, daemon=True).start()
 
     # ✅ Start the schedule thread
-
-    
     run_schedule(agent)
 
     # 🧠 Start the interaction loop
@@ -199,7 +201,7 @@ def main():
     for i, ag in enumerate(agents):             # ✅ 3. Show agent list
         print(f"  {i+1}. {ag['name']}")
 
-    selected = int(input("Select agent number: ")) - 1
+    selected = int(input("Select agent number: ")) -1
     run_agent(agents[selected])                 # ✅ 4. Run selected agent
 
 
