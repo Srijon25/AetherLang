@@ -3,12 +3,27 @@ from lark import Lark, Transformer
 import threading
 import time
 import json
+import os
 
+def load_memory(agent_name):
+    path = f"memory/{agent_name}.json"
+    if os.path.exists(path):
+        with open(path) as f:
+            return json.load(f)
+    return {}
+
+def save_memory(agent_name, memory):
+    os.makedirs("memory", exist_ok=True)
+    with open(f"memory/{agent_name}.json", "w") as f:
+     json.dump(memory, f, indent=2)
+      
 # Define the grammar again (same as in lexer.py)
 aether_grammar = r"""
 start: statement+
 
-statement: agent_def
+statement: agent_def | remember_block
+
+remember_block: "remember" ESCAPED_STRING "=" value
 
 agent_def: "agent" CNAME "{" agent_body "}"
 
@@ -93,8 +108,11 @@ class AetherTransformer(Transformer):
 
 # Step 3: Simulate execution
 def run_agent(agent):
+
+    agent["memory"] = load_memory(agent["name"]) or agent.get("memory", {})
+    
     print(f"\n👾 Agent Name: {agent['name']}")
-    print(f"🧠 Memory: {agent.get('memory', {})}")
+    print(f"🧠 Memory loaded: {agent['memory']}")
     print(f"🎯 Goal: {agent.get('goal', '')}")
 
     # ⏰ Background scheduler for time-based recalls
@@ -123,9 +141,26 @@ def run_agent(agent):
         user_input = input("🗣️ Event: ").strip().lower()
         if user_input == "exit":
             print("👋 Exiting agent.")
-            break
 
-        if user_input in agent.get("events", {}):
+            save_memory(agent["name"], agent.get("memory", {}))
+    
+
+            break
+        # 🧠 Handle dynamic memory: remember "key" = "value"
+        if user_input.startswith("remember "):
+         try:
+             _, rest = user_input.split("remember ", 1)
+             key, value = rest.split("=", 1)
+             key = key.strip().strip('"')
+             value = value.strip().strip('"')
+             agent.setdefault("memory", {})[key] = value
+             save_memory(agent["name"], agent["memory"])
+             print(f"🧠 Remembered: {key} = {value}")
+         except Exception as e:
+                print("⚠️ Invalid remember syntax. Use: remember \"key\" = \"value\"")
+            
+                continue
+        if user_input in agent.get("events", {}): 
             # 🧠 GPT thinking
             if "thought" in agent:
                 print("🧠 Agent is thinking...")
@@ -169,6 +204,7 @@ If no update, return {{}}
             try:
                 update = json.loads(mem_update)
                 agent["memory"].update(update)
+                
                 if update:
                     print(f"🧠 Memory updated: {update}")
             except:
@@ -188,6 +224,8 @@ Now: {agent['reflect']}
                 print(f"🪞 Reflection: {reflection}")
         else:
             print("🤖 No event handler for that input.")
+
+        
 # Step 4: Read and run
 def main():
     with open("examples/hello.aether") as f:
