@@ -21,13 +21,15 @@ def save_memory(agent_name, memory):
 aether_grammar = r"""
 start: statement+
 
-statement: agent_def | remember_block
+statement: agent_def | remember_block |forget_block
 
 remember_block: "remember" ESCAPED_STRING "=" value
 
+forget_block: "forget" ESCAPED_STRING
+
 agent_def: "agent" CNAME "{" agent_body "}"
 
-agent_body: memory_block? goal_block? think_block? reflect_block? event_block* schedule_block*
+agent_body: memory_block? goal_block? think_block? reflect_block* event_block* schedule_block*
 
 memory_block: "memory:" var_assign*
 
@@ -105,6 +107,11 @@ class AetherTransformer(Transformer):
         interval = int(items[0])
         key = str(items[1])[1:-1]  # remove quotes from key
         self.current_agent.setdefault("schedule", []).append((interval, key))    
+
+    def forget_block(self, items):
+        key = str(items[0])[1:-1]
+        if "memory" in self.current_agent:
+         self.current_agent["memory"].pop(key, None)            
 
 # Step 3: Simulate execution
 def run_agent(agent):
