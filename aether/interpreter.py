@@ -160,6 +160,26 @@ def run_agent(agent):
                 print("⚠️ Invalid remember syntax. Use: remember \"key\" = \"value\"")
             
                 continue
+         
+        if user_input.strip().startswith("forget "):
+         try:
+        # Extract the quoted key
+           key_part = user_input.strip()[len("forget "):].strip()
+           if key_part.startswith('"') and key_part.endswith('"'):
+              key = key_part[1:-1]  # Remove quotes
+              if key in agent.get("memory", {}):
+                  agent["memory"].pop(key)
+                  save_memory(agent["name"], agent["memory"])
+                  print(f"🧠 Forgot: {key}")
+              else:
+                 print(f"❓ Key '{key}' not found in memory.")
+           else:
+             print("⚠️ Please wrap the key in double quotes: forget \"key\"")
+         except Exception as e:
+          print("⚠️ Error while forgetting:", e)
+         continue
+ 
+
         if user_input in agent.get("events", {}): 
             # 🧠 GPT thinking
             if "thought" in agent:
