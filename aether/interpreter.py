@@ -101,7 +101,8 @@ class AetherTransformer(Transformer):
         self.current_agent["thought"] = str(items[0])[1:-1]
 
     def reflect_block(self, items):
-        self.current_agent["reflect"] = str(items[0])[1:-1]    
+     reflection_prompt = items[0][1:-1]  # remove quotes
+     self.current_agent.setdefault("reflect", []).append(reflection_prompt)   
 
     def schedule_block(self, items):
         interval = int(items[0])
@@ -185,7 +186,26 @@ def run_agent(agent):
          except Exception as e:
           print("⚠️ Error while forgetting:", e)
          continue
- 
+
+        for prompt in agent.get("reflect", []):
+         print("🪞 Reflecting...")
+         full_prompt = f"""
+          Agent memory:
+          {json.dumps(agent.get('memory', {}), indent=2)}
+
+          Goal: {agent.get('goal', '')}
+
+          Now: {prompt}
+          """
+        print("[MOCK GPT] Prompt received:\n", full_prompt)
+    
+    # Simulate a pretend reflection output:
+        fake_thought = "[MOCK RESPONSE] Pretend GPT suggested: {'new_insight': 'Focus on daily check-ins'}"
+        print("🪞 Reflection:", fake_thought)
+
+    # Optional: simulate updating memory
+    # agent["memory"]["new_insight"] = "Focus on daily check-ins"
+
 
         if user_input in agent.get("events", {}): 
             # 🧠 GPT thinking
