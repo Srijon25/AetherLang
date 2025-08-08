@@ -206,6 +206,10 @@ def run_agent(agent):
     # Optional: simulate updating memory
     # agent["memory"]["new_insight"] = "Focus on daily check-ins"
 
+        with open(f"memory/{agent['name']}.json", "w") as f:
+         json.dump(agent["memory"], f, indent=2)
+
+
 
         if user_input in agent.get("events", {}): 
             # 🧠 GPT thinking
@@ -231,6 +235,7 @@ Think: {agent['thought']}
             memory_str = ", ".join(f"{k}: {v}" for k, v in memory.items())
 
             prompt = f"""
+
 You are an AI agent with the goal: "{goal}"
 Your memory: {memory_str}
 The user said: "{user_input}"
