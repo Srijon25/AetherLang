@@ -187,27 +187,34 @@ def run_agent(agent):
           print("⚠️ Error while forgetting:", e)
          continue
 
+        from gpt_engine import call_gpt
+
         for prompt in agent.get("reflect", []):
-         print("🪞 Reflecting...")
-         full_prompt = f"""
-          Agent memory:
-          {json.dumps(agent.get('memory', {}), indent=2)}
+           print("🪞 Reflecting...")
+        full_prompt = f"""
+            Agent memory:
+         {json.dumps(agent.get('memory', {}), indent=2)}
 
-          Goal: {agent.get('goal', '')}
+         Goal: {agent.get('goal', '')}
 
-          Now: {prompt}
-          """
-        print("[MOCK GPT] Prompt received:\n", full_prompt)
-    
-    # Simulate a pretend reflection output:
-        fake_thought = "[MOCK RESPONSE] Pretend GPT suggested: {'new_insight': 'Focus on daily check-ins'}"
-        print("🪞 Reflection:", fake_thought)
+         Now: {prompt}
+         """
+        try:
+         resp = call_gpt(full_prompt)   # 🔥 real GPT instead of fake
+        except Exception as e:
+          resp = f"[ERROR calling GPT] {e}"
 
-    # Optional: simulate updating memory
-    # agent["memory"]["new_insight"] = "Focus on daily check-ins"
+        print("🪞 Reflection:", resp)
+
+    # Optional: update memory with insight if resp is JSON
+    # try:
+    #     insight = json.loads(resp)
+    #     agent["memory"].update(insight)
+    # except:
+    #     pass
 
         with open(f"memory/{agent['name']}.json", "w") as f:
-         json.dump(agent["memory"], f, indent=2)
+          json.dump(agent["memory"], f, indent=2)
 
 
 
@@ -236,10 +243,10 @@ Think: {agent['thought']}
 
             prompt = f"""
 
-You are an AI agent with the goal: "{goal}"
-Your memory: {memory_str}
-The user said: "{user_input}"
-Respond using this template: "{template}"
+Agent memory:
+{json.dumps(agent.get("memory", {}), indent=2)}
+
+{template.replace("{message}", user_input)}
 """
             response = call_gpt(prompt)
             print(f"🤖 Response: {response}")
