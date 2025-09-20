@@ -189,29 +189,31 @@ def run_agent(agent):
 
         from gpt_engine import call_gpt
 
-        for prompt in agent.get("reflect", []):
-           print("🪞 Reflecting...")
-        full_prompt = f"""
-            Agent memory:
-         {json.dumps(agent.get('memory', {}), indent=2)}
+        if user_input.startswith("reflect using gpt"):
+          try:
+        # extract reflection prompt
+            if '"' in user_input:
+            # take text inside first pair of quotes
+             reflection_prompt = user_input.split('"', 1)[1].rsplit('"', 1)[0]
+            else:
+             reflection_prompt = user_input[len("reflect using gpt"):].strip()
 
-         Goal: {agent.get('goal', '')}
+            print("🪞 Reflecting...")
+            full_prompt = f"""
+        Agent memory: {json.dumps(agent.get('memory', {}), indent=2)}
+        Goal: {agent.get('goal', '')}
+        Now: {reflection_prompt}
+            """.strip()
 
-         Now: {prompt}
-         """
-        try:
-         resp = call_gpt(full_prompt)   # 🔥 real GPT instead of fake
-        except Exception as e:
-          resp = f"[ERROR calling GPT] {e}"
+            resp = call_gpt(full_prompt)
+            print("🪞 Reflection:", resp)
 
-        print("🪞 Reflection:", resp)
+          except Exception as e:
+            print("⚠️ Error during reflection:", e)
 
-    # Optional: update memory with insight if resp is JSON
-    # try:
-    #     insight = json.loads(resp)
-    #     agent["memory"].update(insight)
-    # except:
-    #     pass
+          continue  # skip normal message handling
+
+    
 
         with open(f"memory/{agent['name']}.json", "w") as f:
           json.dump(agent["memory"], f, indent=2)
