@@ -16,8 +16,7 @@ def save_memory(agent_name, memory):
     os.makedirs("memory", exist_ok=True)
     with open(f"memory/{agent_name}.json", "w") as f:
      json.dump(memory, f, indent=2)
-      
-# Define the grammar again (same as in lexer.py)
+    
 aether_grammar = r"""
 start: statement+
 

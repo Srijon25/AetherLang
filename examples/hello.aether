@@ -11,7 +11,7 @@ agent MyAgent {
     on event "hello" as handle_input:
         respond using GPT: "You said hello, {name}!"
 
-    every 5s:
+    every 60s:
         recall "goal"
 }
 
@@ -28,7 +28,7 @@ agent TutorBot {
     on event "ask" as handle_input:
         respond using GPT: "I'm your {subject} tutor. You asked a question."
 
-    every 10s:
+    every 70s:
         recall "subject"
 }
 
@@ -45,6 +45,6 @@ agent HealthHelper {
     on event "status" as handle_input:
         respond using GPT: "Hi, I'm {name}, your assistant for {focus}. How are you feeling?"
 
-    every 15s:
+    every 75s:
         recall "focus"
 }
