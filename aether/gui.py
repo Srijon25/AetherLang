@@ -194,9 +194,25 @@ class AetherGUI(QWidget):
     def load_selected_agent(self):
         name = self.agent_select.currentText()
         if not name:
-            return
+          return
         self.agent_name = name
         self.agent_memory = load_agent_memory(name)
+
+        # ⬇️ NEW: also load schedule info from .aether source
+        try:
+          from interpreter import parser, AetherTransformer
+          with open(EXAMPLES_FILE) as f:
+            code = f.read()
+          tree = parser.parse(code)
+          transformer = AetherTransformer()
+          agents = transformer.transform(tree)
+          for ag in agents:
+            if ag["name"] == self.agent_name and "schedule" in ag:
+                self.agent_memory["schedule"] = ag["schedule"]
+                break
+        except Exception as e:
+         print("⚠️ Could not load schedule info:", e)
+
         # show memory and goal
         self.show_memory(self.agent_memory)
         self.goal_view.setText(self.agent_memory.get("goal", "<no goal>"))
@@ -308,25 +324,31 @@ class AetherGUI(QWidget):
        signals.update_memory.emit(self.agent_memory)
 
     def recall_scheduler(self):
-       """Background loop to check for timed recalls in memory"""
-       while True:
-        recalls = self.agent_memory.get("recalls", [])
-        if isinstance(recalls, list):
-            now = int(time.time())
-            for r in recalls:
-                try:
-                    interval = int(r.get("interval", 0))
-                    last = int(r.get("last", 0))
-                    if interval > 0 and now - last >= interval:
-                        msg = r.get("message", "recall triggered")
-                        signals.append_history.emit(f"⏰ Recall: {msg}")
-                        # update last trigger time
-                        r["last"] = now
-                        save_agent_memory(self.agent_name, self.agent_memory)
-                        signals.update_memory.emit(self.agent_memory)
-                except Exception:
-                    continue
-            time.sleep(2)    
+      """Background loop to check for scheduled recalls in memory"""
+      while True:
+        schedules = self.agent_memory.get("schedule", [])
+        now = int(time.time())
+        for interval, key in schedules:
+            # Use a unique key to track last trigger time
+            last_key = f"last_{key}_{interval}"
+            last = self.agent_memory.get(last_key, 0)
+            if now - last >= interval:
+                # Get value from memory or goal
+                value = self.agent_memory.get(key, None)
+                if value is None and key == "goal":
+                    value = self.agent_memory.get("goal", "[Unknown]")
+                elif value is None:
+                    value = "[Unknown]"
+
+                # Emit to history
+                signals.append_history.emit(f"⏰ Recall: {key} ➜ {value}")
+
+                # Update last trigger time
+                self.agent_memory[last_key] = now
+                save_agent_memory(self.agent_name, self.agent_memory)
+                signals.update_memory.emit(self.agent_memory)
+
+        time.sleep(2)    
     
     def show_response(self, text):
         self.response_view.setPlainText(text)
