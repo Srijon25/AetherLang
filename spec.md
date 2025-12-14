@@ -1,200 +1,175 @@
-AetherLang — Official Language Specification 
+# AetherLang — Official Language Specification
 
-Table of contents
+## Table of contents
 
-1. Introduction & motivation
+1. Introduction & motivation  
+2. Quickstart (run & test)  
+3. Language overview (core concepts)  
+4. Concrete Syntax: Example Agents and Authoring New Agents 
+5. Formal grammar (EBNF & Lark)  
+6. Execution model & semantics  
+7. GPT prompt conventions  
+8. Memory, persistence & scheduling semantics  
+9. Error messages & debugging tips  
+10. Interactive examples  
+11. Known issues & recommended fixes  
 
+---
 
-2. Quickstart (run & test)
+## 1. Introduction & motivation
 
-
-3. Language overview (core concepts)
-
-
-4. Concrete Syntax: Example Agents and Authoring New Agents in examples/hello.aether
-
-
-5. Formal grammar (EBNF & Lark)
-
-
-6. Execution model & semantics
-
-
-7. GPT prompt conventions
-
-
-8. Memory, persistence & scheduling semantics
-
-
-9. Error messages & debugging tips
-
-
-10. Interactive examples
-
-
-11. Known issues & recommended fixes
-
-
-
-
-
-1. Introduction & Motivation
-
-AetherLang is an AI-native, agent-first programming language designed around persistent memory, declarative goals, and seamless integration with large language models (GPT). Unlike traditional languages that treat GPT as an external service, AetherLang elevates it to a first-class primitive, enabling agents that can think, reflect, and respond while preserving continuity across sessions.
+AetherLang is an **AI-native, agent-first programming language** designed around **persistent memory**, **declarative goals**, and seamless integration with large language models (GPT). Unlike traditional languages that treat GPT as an external service, AetherLang elevates it to a **first-class primitive**, enabling agents that can think, reflect, and respond while preserving continuity across sessions.
 
 Key points:
 
-First-class agent abstraction with persistent memory.
+- First-class agent abstraction with persistent memory.  
+- Built-in GPT primitives: `remember`, `forget`, `reflect`, `respond`, `think`.  
+- Time-based constructs (`every <N>s: recall "<key>"`) for recurring behaviors.  
 
-Built-in GPT primitives: remember, forget, reflect, respond, think.
+> Note: In the current reference implementation, scheduling is wall-clock based (Python threads + `time.sleep`) and is not a logical-time or deterministic replay system.
 
-Time-native constructs (every <N>s: recall <key>) for recurring behaviors.
+---
 
+## 2. Quickstart (Run & Test)
 
+### Step 0: Install Python & Clone Repository
 
-
-
-2. Quickstart (Run & Test)
-
-Step 0: Install Python & Clone Repository
-
-Install Python 3.13 (or compatible version) if not already installed:
-
-Download Python
-
-Ensure python (or python3) is in your PATH.
+Install Python 3.x (tested with modern versions) and ensure `python` is in your PATH.
 
 Clone the repository:
 
+```bash
 git clone https://github.com/Srijon25/AetherLang.git
 cd AetherLang
+```
 
+### Step 1: Create and Activate Virtual Environment
 
-Step 1: Set OpenAI API Key
-
-In .env file (for GUI or scripts):
-
-OPENAI_API_KEY=your_openai_api_key_here
-
-
-In terminal environment (for CLI interpreter):
+```bash
+python -m venv venv
+```
 
 Linux / Mac:
 
-export OPENAI_API_KEY=your_openai_api_key_here
-
+```bash
+source venv/bin/activate
+```
 
 Windows (PowerShell):
 
-$env:OPENAI_API_KEY="your_openai_api_key_here"
+```powershell
+.\venv\Scripts\Activate.ps1
+```
 
+⚠️ Windows note: If you see “execution of scripts is disabled,” run PowerShell as Administrator:
+
+```powershell
+Set-ExecutionPolicy RemoteSigned
+```
+Type Y to confirm, then re-run activation.
+
+### Step 2: Install Dependencies
+
+Install the required Python packages:
+
+# Required (CLI interpreter)
+pip install lark-parser openai
+
+# Optional (GUI support)
+pip install PyQt5
+
+# Optional (recommended if using .env files)
+pip install python-dotenv
+
+### Step 3: Set OpenAI API Key
+
+**Recommended (secure):** set your API key via environment variables.
+
+Linux / Mac:
+
+```bash
+export OPENAI_API_KEY=your_openai_api_key_here
+```
+
+Windows (PowerShell):
+
+```powershell
+$env:OPENAI_API_KEY="your_openai_api_key_here"
+```
 
 Windows (CMD):
 
+```cmd
 setx OPENAI_API_KEY "your_openai_api_key_here"
+```
 
+Create `aether/.env` file (for GUI/scripts):
 
-⚠️ Both .env and terminal environment should use the same API key to ensure CLI and GUI access the same
-GPT account and memory functions correctly.
+```env
+OPENAI_API_KEY=your_openai_api_key_here
+```
 
+⚠️ Security note: Do not share API keys.
 
-Step 2: Create and Activate Virtual Environment
-# Create venv
-python -m venv venv
+### Step 4: Run CLI Interpreter
 
-# On Linux / Mac
-source venv/bin/activate
+Run (default):
 
-# On Windows (PowerShell)
-.\venv\Scripts\Activate.ps1
-
-
-⚠️ Windows note: If you see “execution of scripts is disabled,” open PowerShell as Administrator and run:
-
-Set-ExecutionPolicy RemoteSigned
-
-
-Type Y to confirm, then re-run activation.
-
-
-Step 3: Run CLI Interpreter
+```bash
 python aether/interpreter.py
+```
 
+By default, the reference implementation parses **`examples/hello.aether`** and then lists the agents found in that file. Select an agent number to enter the REPL.
 
-Select an agent from examples/hello.aether.
+Run a specific `.aether` file (optional):
+
+```bash
+python aether/interpreter.py examples/<file>.aether
+```
 
 Supported REPL Commands:
 
-remember "key" = "value"       — adds or updates memory immediately
-forget "key"                    — deletes memory entry immediately
-reflect using gpt "..."          — Produces GPT-powered reflection without updating memory.
-on event "..."                   — triggers event-based response
-exit                             — saves current memory to memory/<agent>.json and exits
+- `remember "key" = "value"` — adds or updates memory immediately  
+- `forget "key"` — deletes a memory entry immediately  
+- `reflect using gpt "..."` — produces GPT-powered reflection **without** updating memory (unless you manually remember something)  
+- type an event name (e.g., `hello`) — triggers matching `on event "..."` handlers  
+- `exit` — saves memory (if needed) and exits
 
+### Step 5: Run GUI (optional)
 
-Memory Persistence Notes:
-
-Any command that modifies memory (remember, forget, or event responses) automatically creates or updates memory/<agent>.json.
-
-If no memory-modifying commands are typed, using exit will still create the memory file with the agent’s current state.
-
-GUI interactions also update memory/<agent>.json automatically; closing the window saves memory if not 
-already updated.
-
-
-Step 4: Run GUI (optional)
-
+```bash
 python aether/gui.py
+```
 
-All interactions in the GUI update the same memory file as the CLI (memory/<agent>.json).
+The GUI uses the same `memory/<agent>.json` persistence folder as the CLI.
 
-Closing the GUI automatically persists memory.
+---
 
+## 3. Language overview (core concepts)
 
+AetherLang is an AI-native, time-based agent language. Its building blocks are:
 
+- `agent` — execution unit with a name, memory, optional goal, and behaviors.  
+- `memory` — key-value store (stored on disk in `memory/<agent>.json`).  
+- `goal` — a high-level string objective guiding the agent.  
+- `remember "key" = "value"` — add/update memory (REPL command; also present in grammar).  
+- `forget "key"` — delete memory entry (REPL command; also present in grammar).  
+- `think using GPT` — generate new ideas via GPT.  
+- `reflect using GPT` — structured reflection on memory + goal.  
+- `on event "..."` — event handler mapping input to GPT-based responses.  
+- `respond using GPT` — generate GPT-based replies for events.  
+- `every N s: recall "key"` — periodic recall / logging of a key.  
+- `exit` — save state and close the session.  
 
+---
 
-3. Language Overview (Core Concepts)
+## 4. Concrete Syntax: Example Agents and Authoring New Agents
 
-AetherLang is an AI-native, time-native agent language. Its building blocks are:
+AetherLang agents are defined using a simple, human-readable syntax. Below are canonical examples from `examples/hello.aether`.
 
-agent — execution unit with name, memory, optional goal, and behaviors. Persisted to memory/<agent>.json.
+### 4.0 Example Agents
 
-memory — key-value store that survives across sessions.
-
-goal — high-level string objective guiding the agent.
-
-remember "key" = "value" — add/update memory (REPL command).
-
-forget "key" — delete memory entry (REPL command).
-
-think using GPT — generate new ideas via GPT.
-
-reflect using GPT — structured reflection on memory + goal.
-
-In .aether files: predefined self-reflection.
-
-In REPL: ad-hoc queries like reflect using gpt "What is my current goal?".
-
-
-on event "..." — event handler mapping input to responses.
-
-respond using GPT — generate GPT-based replies for events.
-
-every N s: recall "key" — time-native scheduling for periodic memory recall.
-
-exit — saves the agent’s memory to JSON and closes session.
-
-
-
-
-
-4. Concrete Syntax: Example Agents and Authoring New Agents in examples/hello.aether
-
-AetherLang agents are defined using a simple, human-readable syntax. Below are canonical examples from examples/hello.aether.
-
-4.0 Example Agents
-
+```aether
 agent MyAgent {
   memory:
     name = "Srijon Kumar Shill"
@@ -206,7 +181,9 @@ agent MyAgent {
     respond using GPT: "You said hello, {name}!"
   every 60s: recall "goal"
 }
+```
 
+```aether
 agent TutorBot {
   memory:
     subject = "Math"
@@ -218,7 +195,9 @@ agent TutorBot {
     respond using GPT: "I'm your {subject} tutor. You asked a question."
   every 70s: recall "subject"
 }
+```
 
+```aether
 agent HealthHelper {
   memory:
     name = "FitAI"
@@ -230,77 +209,44 @@ agent HealthHelper {
     respond using GPT: "Hi, I'm {name}, your assistant for {focus}. How are you feeling?"
   every 75s: recall "focus"
 }
+```
 
+### 4.1 Authoring New Agents
 
-4.1 Authoring New Agents
+You can author new agents by adding agent definitions to a `.aether` source file. The canonical example file is `examples/hello.aether`.
 
-You can author new agents by adding agent definitions to any `.aether` source file.  
-The canonical example file is `examples/hello.aether`.
+Minimal workflow to create a new agent:
 
-**Minimal workflow to create a new agent:**
+1. Edit `examples/hello.aether` **or** create a new file (e.g., `examples/my_agent.aether`) and add a new `agent { ... }` block.  
+2. Save the file.  
+3. Run the CLI interpreter:
 
-1. **Edit or create a `.aether` file** (e.g., `examples/hello.aether`) and add a new agent block using the same syntax as in Section 4.  
+   - Default file:
+     ```bash
+     python aether/interpreter.py
+     ```
 
-   Example (new agent definition):
+   - Run a specific file:
+     ```bash
+     python aether/interpreter.py examples/my_agent.aether
+     ```
 
-   ```aether
-   agent ScholarBot {
-     memory:
-       name = "ScholarBot"
-       focus = "AI research"
-     goal: "Guide a student toward publishing their first AI paper"
-     think using GPT: "Suggest 3 beginner-friendly research topics in {focus}."
-     reflect using GPT: "Given my goal, what practical next step should I recommend?"
-     on event "ask" as handle_input:
-       respond using GPT: "Hello, I am {name}. You asked about {focus}."
-     every 120s: recall "goal"
-   }
+   Then select your new agent from the list.
 
-
-
-Save the file ✅
-
-Saving is required for the interpreter and GUI to detect the new agent.
-
-Unsaved changes will not be parsed or executed.
-
-Run the CLI interpreter
-
-Execute:
-
-python aether/interpreter.py
-
-
-The interpreter parses all saved .aether files and lists the agents found.
-
-Select the number corresponding to your new agent to run it in the REPL.
-
-Any first memory-modifying command (e.g., remember "k" = "v" or handling an event that updates memory) or typing exit will create memory/NewAgent.json for that agent.
-
-Run or refresh the GUI (optional)
-
-The GUI reads the memory/ folder for available agents.
-
-To make your new agent appear:
-a) Run the interpreter to generate the agent’s memory file (see step 3), or
-b) Manually create memory/NewAgent.json with a minimal JSON object, e.g., {"name": "NewAgent"}.
-
-Open (or reload) the GUI and select the agent from the agent list.
+4. If you want the GUI to show your agent immediately, run the CLI once to create `memory/<AgentName>.json`, or create it manually with minimal JSON.
 
 Notes:
 
-The new agent can be fully functional immediately after saving the file and generating its memory file.
+- The current reference implementation reads `examples/hello.aether` by default. Passing a file path is recommended for running agents defined in other `.aether` files. 
+- Event matching in the CLI normalizes input to lowercase; defining event names in lowercase is recommended for consistency.
 
-Following this workflow ensures all sessions (CLI and GUI) persist memory and behave consistently.
+---
 
+## 5. Formal grammar (EBNF & Lark)
 
+### 5.1 EBNF
 
-
-
-5. Formal grammar (EBNF & Lark)
-
-EBNF:
-
+```ebnf
 <program>         ::= <statement>+
 <statement>       ::= <agent> | <remember> | <forget>
 
@@ -315,7 +261,7 @@ EBNF:
 <think-block>     ::= "think using GPT:" STRING
 <reflect-block>   ::= "reflect using GPT:" STRING
 <event-block>     ::= "on event" STRING "as" IDENT ":" "respond using GPT:" STRING
-<schedule-block>  ::= "every" NUMBER "s: recall" STRING
+<schedule-block>  ::= "every" NUMBER "s:" "recall" STRING
 
 <var-assign>      ::= IDENT "=" <value>
 <value>           ::= STRING | NUMBER | <list>
@@ -324,12 +270,11 @@ EBNF:
 IDENT             ::= letter (letter | digit | "_")*
 STRING            ::= '"' .*? '"'
 NUMBER            ::= integer or float literal
+```
 
+### 5.2 Lark Grammar (Python-ready)
 
-
-
-Lark Grammar (Python-ready):
-
+```python
 from lark import Lark
 
 aether_grammar = r"""
@@ -363,237 +308,185 @@ list: "[" [value ("," value)*] "]"
 """
 
 parser = Lark(aether_grammar, start="start")
+```
 
+---
 
+## 6. Execution model & semantics
 
+Overview: AetherLang programs follow a **Parse → Transform → Run** lifecycle.
 
+- Parse → Lark constructs a parse tree from `.aether` source.  
+- Transform → Converts the parse tree into Python dictionaries containing:
+  - agent name  
+  - memory key–value store  
+  - goal string  
+  - behaviors (`think`, `reflect`, `events`, `schedule`)  
+- Run → Interpreter loads memory, starts schedulers, then enters an interactive loop.
 
-6. Execution Model & Semantics
+### Event handling
 
-Overview: AetherLang programs follow a Parse → Transform → Run lifecycle.
+When a user triggers an event:
 
-Parse → Lark parser constructs a parse tree from the .aether source.
+1. The CLI reads input and normalizes it (current reference implementation lowercases input).  
+2. If it matches a registered `on event "..."`, the interpreter builds a prompt using:
+   - agent memory (JSON snapshot)  
+   - the event response template  
+3. GPT generates a response.  
+4. The interpreter optionally asks GPT to suggest a **single JSON key/value memory update** and merges it only if valid JSON.
 
-Transform → Converts parse tree into Python dictionary capturing:
+### Scheduling
 
-Agent name
+`every N s: recall "<key>"` runs as a background daemon thread and prints periodic recalls. In the current implementation, this is wall-clock scheduling using `time.sleep()` and is best-effort.
 
-Memory key–value store
+> Non-goal: This is not a logical timeline engine or deterministic replay system (yet).
 
-Goal string
+---
 
-Behaviors (think, reflect, events, schedules)
+## 7. GPT prompt conventions
 
-Run → Interpreter:
+### Reflect (manual or automatic)
 
-Loads memory from memory/<agent>.json if exists; otherwise uses static memory block.
-
-Starts background threads for scheduled recalls (every N s: recall "key").
-
-Enters REPL (terminal) or GUI loop to process events and manual commands.
-
-Event Handling
-
-When a user triggers on event "...":
-
-Formats the response template with memory values ({key}).
-
-Calls GPT to generate the response.
-
-Optionally accepts a GPT-proposed memory update (validated as JSON).
-
-Schedules
-
-every N s: recall "key" runs in a background thread without blocking REPL or GUI.
-
-Scheduler prints memory key values (or goal if key absent).
-
-Persistence
-
-Automatic updates: Any memory-modifying command (remember, forget, event responses) immediately updates memory/<agent>.json.
-
-Exit-triggered save: If no memory-modifying commands are typed, using exit will create memory.json with current agent state.
-
-Runtime updates: remember / forget apply instantly; GPT updates merge only if valid JSON. Invalid updates are ignored.
-
-Scheduled recalls run in background threads without blocking user input.
-
-
-
-
-
-7. GPT Prompt Conventions
-
-Reflect (manual or automatic):
-
+```
 Agent memory: <JSON memory>
 Goal: <goal string>
 Now: <reflection prompt>
+```
 
-Think (spontaneous generation):
+### Think (spontaneous generation)
 
+```
 Agent memory: <key: value, ...>
 Think: <think prompt>
+```
 
-Respond (event-based):
+### Respond (event-based)
 
-Agent memory: <JSON memory>
+```
+Agent memory:
+<JSON memory>
+
 <response-template-with-placeholders>
+```
 
-Memory Update (one-key JSON):
+### Memory Update (one-key JSON)
 
+```
 Here is the current memory: <memory>
 Suggest ONE key-value update as JSON.
 If no update is needed, return {}.
+```
 
 Practical Notes:
 
-Pin GPT model and set temperature=0 for deterministic memory updates.
+- For more deterministic memory updates, set the model temperature to 0 (if exposed/configured).  
+- Always validate GPT output before merging into memory.  
+- The reference implementation is not a secure sandbox: do not run untrusted `.aether` files or untrusted prompts.
 
-Always validate GPT output before merging into memory.
+---
 
-Manual reflect using gpt "..." in the REPL fully respects memory/goal state.
+## 8. Memory, persistence & scheduling semantics
 
+### Startup loading
 
+- On startup, the interpreter attempts to load `memory/<agent>.json`.  
+- If it exists, the interpreter uses it as the agent’s current memory store.  
+- If it does not exist, the interpreter starts from the `memory:` block defined in the `.aether` source.
 
+### Runtime updates
 
+- `remember` / `forget` apply immediately in memory **and are persisted immediately** to `memory/<agent>.json`.  
+- GPT-suggested memory updates are applied only if they parse as valid JSON objects (dictionary), and are then persisted.  
+- `reflect using gpt ...` does not modify memory unless you explicitly `remember` something afterward.
 
-8. Memory, Persistence & Scheduling Semantics
+### Exit behavior
 
-Startup: Load memory/<agent>.json if it exists; otherwise use static memory: block.
+- `exit` ends the session; the interpreter also saves memory on exit to ensure the latest memory state is persisted.
 
-Runtime updates:
+### Scheduling behavior
 
-remember / forget → apply instantly in memory.
+- Scheduled recalls run in daemon threads and do not block interactive input.  
+- Scheduling is wall-clock based and best-effort.
 
-GPT updates → applied only if valid JSON.
+---
 
-
-Persistence: Disk save happens only on REPL exit or GUI window close.
-
-Scheduled recalls: Background threads periodically print memory key values without blocking user input.
-
-
-This design ensures safe persistence, predictable updates, and time-native AI behavior.
-
-
-
-
-
-9. Error messages & debugging tips
+## 9. Error messages & debugging tips
 
 The AetherLang interpreter is designed to guide developers instead of failing silently.
 
-Common Errors
-⚠️ Invalid remember syntax. Use: remember "key" = "value"
-⚠️ Please wrap the key in double quotes: forget "key"
-🤖 No event handler for that input.
+Common Errors:
 
-Success Confirmations
-🧠 Remembered: <key> = <value>
-🧠 Forgot: <key>
-🧠 Memory updated: <update>
-🧠 Memory saved to memory/<agent>.json (on exit)
-👋 Exiting agent.
+- ⚠️ Invalid remember syntax. Use: `remember "key" = "value"`  
+- ⚠️ Please wrap the key in double quotes: `forget "key"`  
+- 🤖 No event handler for that input.  
 
-Debugging Workflow
+Success Confirmations:
 
-Check syntax — are keys wrapped in double quotes?
+- 🧠 Remembered: `<key> = <value>`  
+- 🧠 Forgot: `<key>`  
+- 🧠 Memory updated: `<update>`  
+- 👋 Exiting agent.  
 
-Check persistence — type exit (REPL) or close GUI to save.
+Debugging Workflow:
 
-Check active agent — confirm the correct agent was loaded from examples/.
+- Check syntax — are keys wrapped in double quotes?  
+- Check persistence — look at `memory/<agent>.json` after `remember` or `forget`.  
+- Check active agent — confirm the correct agent was loaded from `examples/hello.aether`.  
 
-💡 Note:
+---
 
-memory/<agent>.json is created automatically when any memory-modifying command is typed, or when exit is 
-used to terminate the session.
+## 10. Interactive examples
 
-This ensures developers never lose memory updates and can safely reproduce agent states.
-
-
-
-
-
-10. Interactive examples
-
-
-MyAgent Example
+### MyAgent Example
 
 1️⃣ Memory Updates & Automatic Persistence
 
-Commands that modify memory automatically create or update the JSON file (memory/MyAgent.json). This includes commands like:
+Commands that modify memory automatically create or update the JSON file (`memory/MyAgent.json`). This includes:
 
-handle input …
+- handling an event (if it triggers a memory update),  
+- `remember "key" = "value"`,  
+- `forget "key"`.
 
-remember "key" = "value"
-
-
-Note: Commands like reflect using gpt … do not trigger memory updates.
-
+Note: `reflect using gpt ...` does not change memory by itself.
 
 ![MyAgent Memory Update](docs/screenshots/myagent_memory_update.png)
 
-
-
 2️⃣ Exit & Finalization
 
-
-Explain: This screenshot shows the user typing exit. If no memory-modifying command was used before, exit 
-will still create the memory file. This ensures every session can persist the agent state.
-
+Typing `exit` ends the session and ensures memory is saved.
 
 ![MyAgent Exit](docs/screenshots/myagent_exit.png)
 
-
-
-TutorBot Example
-
+### TutorBot Example
 
 1️⃣ Memory Updates & Automatic Persistence
 
 ![TutorBot Memory Update](docs/screenshots/tutorbot_memory_update.png)
 
-
 2️⃣ Exit & Session Finalization
 
 ![TutorBot Exit](docs/screenshots/tutorbot_exit.png)
 
-
-
-HealthHelper Example
-
+### HealthHelper Example
 
 1️⃣ Memory Updates & Automatic Persistence
 
 ![HealthHelper Memory Update](docs/screenshots/healthhelper_memory_update.png)
 
-
 2️⃣ Exit & Session Finalization
 
 ![HealthHelper Exit](docs/screenshots/healthhelper_exit.png)
 
+---
 
+## 11. Known issues & recommended fixes
 
-
-
-11. Known Issues & Recommended Fixes
-
-Add __main__ guard.
-
-Unify grammar across lexer.py and interpreter.py.
-
-Normalize input (e.g., lowercasing).
-
-Ensure robust GPT JSON parsing.
-
-Validate memory keys (avoid whitespace or reserved words).
-
-Add unit tests for parser, transformer, scheduler, and persistence.
-
-
-
-
-
-
-
+- Add `__main__` guards where needed and unify entrypoints.  
+- Unify grammar across `lexer.py` and `interpreter.py` (avoid duplication).  
+- Add a small CLI argument handler so `python aether/interpreter.py <file.aether>` loads the given file (keep default `examples/hello.aether`).  
+- Normalize event names consistently (recommend: lowercase `on event` names).  
+- Improve GPT JSON parsing robustness (strict validation + schema).  
+- Validate memory keys (avoid whitespace or reserved words).  
+- Add unit tests for parser, transformer, scheduler, and persistence.  
+- Improve goal persistence for the GUI (e.g., persist goal into memory JSON or parse `.aether` in GUI).  
+- Do not hardcode API keys in source; read from environment (`OPENAI_API_KEY`).  
