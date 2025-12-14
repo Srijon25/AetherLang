@@ -4,6 +4,7 @@ import threading
 import time
 import json
 import os
+import sys
 
 def load_memory(agent_name):
     path = f"memory/{agent_name}.json"
@@ -288,19 +289,27 @@ Now: {agent['reflect']}
         
 # Step 4: Read and run
 def main():
-    with open("examples/hello.aether") as f:
+    # ✅ Default: examples/hello.aether
+    source = sys.argv[1] if len(sys.argv) > 1 else "examples/hello.aether"
+
+    if not os.path.exists(source):
+        print(f"❌ File not found: {source}")
+        return
+
+    with open(source) as f:
         code = f.read()
-    
+
     tree = parser.parse(code)
     transformer = AetherTransformer()           # ✅ 1. Create transformer
     agents = transformer.transform(tree)        # ✅ 2. Parse agents
-    
+
     print("🤖 Available Agents:")
     for i, ag in enumerate(agents):             # ✅ 3. Show agent list
         print(f"  {i+1}. {ag['name']}")
 
-    selected = int(input("Select agent number: ")) -1
+    selected = int(input("Select agent number: ")) - 1
     run_agent(agents[selected])                 # ✅ 4. Run selected agent
+
 
 
 
