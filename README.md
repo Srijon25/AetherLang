@@ -1,203 +1,265 @@
-📘 AetherLang
+# AetherLang
 
-AI-Native, Time-Native, Agent-First, Memory-Persistent Programming Language
+**An AI-native, agent-first DSL for GPT-powered agents with persistent memory and time-based scheduling.**
 
-AetherLang is not just another programming language — it’s designed for a world where agents, memory, and 
-time are first-class citizens. Unlike Python, Java, or C++, AetherLang lets you write programs that 
-think, remember, and evolve over time. With built-in GPT reasoning, persistent memory across sessions, 
-and natural-language-friendly syntax, it enables developers to create autonomous systems, simulations, 
-and adaptive AI agents in a way that traditional languages simply can’t.
+AetherLang is designed for a world where **agents**, **memory**, and **time** are first-class citizens.
+It lets you write programs that can **think**, **reflect**, **respond**, and **remember across sessions**
+using a natural, agent-oriented syntax and a small Python reference implementation.
 
+---
 
+## Features
 
+- 🧠 **Agent-first model** — every program is an `agent` with memory + goal + behaviors.
+- 💾 **Persistent memory** — stored as JSON in `memory/<agent>.json`, surviving across sessions.
+- 🔄 **Reflection** — `reflect using gpt ...` queries the model without forcing a memory update.
+- ⏳ **Scheduling** — `every Ns: recall "key"` for periodic recall/printing.
+- 🖥️ **Dual interface** — CLI interpreter + PyQt5 GUI simulator.
+- 🧩 **Minimal syntax** — designed to be readable and close to natural language.
 
-✨ Features
+---
 
-🧠 Agent-First Model – every program is an agent with memory.
+## Quickstart (Run & Test)
 
-💾 Persistent Memory – stored in memory/agent.json, surviving across sessions.
+### Step 0: Install Python & Clone Repository
 
-🔄 Reflection – reflect commands query GPT, but do not persist to JSON.
+Install Python 3.x (tested with modern versions) and ensure `python` is in your PATH.
 
-⏳ Time & Scheduling – every 5 seconds do ... or on exit say ....
+Clone the repository:
 
-🖥️ Dual Interface – run via CLI or interactive PyQt5 GUI.
-
-📝 Minimal Syntax – one statement per line, bridging natural language and code.
-
-
-
-
-🔧 Getting Started
-
-1.Clone & Install
-
+```bash
 git clone https://github.com/Srijon25/AetherLang.git
 cd AetherLang
+```
 
-# create virtual environment
+### Step 1: Create and Activate Virtual Environment
+
+```bash
 python -m venv venv
-source venv/bin/activate       # Windows: .\venv\Scripts\Activate.ps1
+```
 
-# Install dependencies
-pip install lark-parser PyQt5 openai python-dotenv
+Linux / Mac:
 
+```bash
+source venv/bin/activate
+```
 
-2.Set OpenAI API Key
+Windows (PowerShell):
 
-Create a .env file:
+```powershell
+.\venv\Scripts\Activate.ps1
+```
 
-OPENAI_API_KEY=your_openai_api_key_here
+⚠️ Windows note: If you see “execution of scripts is disabled,” run PowerShell as Administrator:
 
+```powershell
+Set-ExecutionPolicy RemoteSigned
+```
+Type Y to confirm, then re-run activation.
 
-Or set it in terminal:
+### Step 2: Install Dependencies
 
-# Linux / Mac
-export OPENAI_API_KEY=your_openai_api_key_here  
+Install the required Python packages:
 
-# Windows
+# Required (CLI interpreter)
+pip install lark-parser openai
+
+# Optional (GUI support)
+pip install PyQt5
+
+# Optional (recommended if using .env files)
+pip install python-dotenv
+
+### Step 3: Set OpenAI API Key
+
+**Recommended (secure):** set your API key via environment variables.
+
+Linux / Mac:
+
+```bash
+export OPENAI_API_KEY=your_openai_api_key_here
+```
+
+Windows (PowerShell):
+
+```powershell
+$env:OPENAI_API_KEY="your_openai_api_key_here"
+```
+
+Windows (CMD):
+
+```cmd
 setx OPENAI_API_KEY "your_openai_api_key_here"
+```
 
+Create `aether/.env` file (for GUI/scripts):
 
-⚠️ Both .env and terminal methods should use the same key to ensure CLI + GUI share memory.
+```env
+OPENAI_API_KEY=your_openai_api_key_here
+```
 
-3.Run Interpreter (CLI)
+⚠️ Security note: Do not share API keys.
 
+### Step 4: Run CLI Interpreter
+
+Run (default):
+
+```bash
 python aether/interpreter.py
+```
 
+By default, the reference implementation parses **`examples/hello.aether`** and then lists the agents found in that file. Select an agent number to enter the REPL.
 
-Example REPL commands:
+Run a specific `.aether` file (optional):
 
-remember "goal" = "Win MIT Scholarship"
-reflect using gpt "What’s my next best step?"
-forget "goal"
-exit
+```bash
+python aether/interpreter.py examples/<file>.aether
+```
 
+Supported REPL Commands:
 
-💾 All changes persist automatically and create memory/<agent>.json (except reflect using gpt"...").
+- `remember "key" = "value"` — adds or updates memory immediately  
+- `forget "key"` — deletes a memory entry immediately  
+- `reflect using gpt "..."` — produces GPT-powered reflection **without** updating memory (unless you manually remember something)  
+- type an event name (e.g., `hello`) — triggers matching `on event "..."` handlers  
+- `exit` — saves memory (if needed) and exits
 
-4.Run GUI (optional)
+### Step 5: Run GUI (optional)
 
+```bash
 python aether/gui.py
+```
 
+The GUI uses the same `memory/<agent>.json` persistence folder as the CLI.
 
-Same memory persistence as CLI — closing the window saves state.
+```
 
-5.Run Parser Only
+✅ remember / forget and event-triggered runs persist (and create) memory/<agent>.json immediately. 
+ℹ️ `reflect using gpt ...` does not force a memory update.
 
+### 4) Run the GUI (optional)
+
+```bash
+python aether/gui.py
+```
+
+The GUI reads/writes the same `memory/<agent>.json` files as the CLI.
+
+### 5) Parse-only mode (debugging the grammar)
+
+```bash
 python aether/lexer.py
+```
 
+---
 
-Outputs a parse tree for .aether source files.
+## Writing agents
 
-📖 For a step-by-step Quickstart (with venv setup, prerequisites, and persistence notes), see spec.md
+Agents live in `.aether` files (see `examples/hello.aether`). Minimal example:
 
+```aether
+agent MyAgent {
+  memory:
+    name = "Srijon"
+  goal: "Learn faster"
 
+  think using GPT: "Suggest 3 study plans for my goal."
+  reflect using GPT: "Given my memory and goal, what's the next best action?"
 
+  on event "hello" as handle_input:
+    respond using GPT: "You said hello, {name}!"
 
-📂 Project Structure
+  every 60s: recall "goal"
+}
+```
+
+---
+
+## How memory persistence works
+
+- On startup, the interpreter loads `memory/<agent>.json` if it exists.
+- If no file exists, it uses the initial `memory:` block from the `.aether` agent definition.
+- Updates happen via:
+  - `remember "k" = "v"` (immediate save),
+  - `forget "k"` (immediate save),
+  - event handling (optionally merges a JSON key/value update suggested by GPT).
+- `exit` saves memory before quitting.
+
+---
+
+## Project structure
+
+```text
 AetherLang/
 ├── aether/
 │   ├── lexer.py        # Grammar & parser (Lark)
-│   ├── interpreter.py  # Executes AetherLang programs
-│   ├── gui.py          # PyQt5 interactive GUI
-│   ├── gpt_engine.py   # GPT integration
-│   └── .env 
-├── memory/
-│   └── agent.json      # Persistent agent memory
+│   ├── interpreter.py  # CLI interpreter + persistence + scheduler
+│   ├── gui.py          # PyQt5 interactive GUI simulator
+│   └── gpt_engine.py   # OpenAI API wrapper (edit/configure your key)
+├── memory/             # JSON memory files created at runtime
 ├── examples/
-│   ├── hello.aether    # example agents
-│
-├── docs/               # screenshots
+│   └── hello.aether    # Example agents
+├── docs/               # Screenshots / recordings
 ├── README.md
 └── spec.md             # Language specification
+```
 
+---
 
+## Documentation
 
+- **Language specification:** `spec.md`
+- **Example agents:** `examples/hello.aether`
+- **Screenshots / demos:** `docs/`
 
-📖 Documentation
+---
 
-Full language specification: spec.md
+## Demo recordings
 
-Screenshots & demos: docs/
+Recordings are stored in `docs/recordings/`.
 
-Example programs: examples/
+- **Create an agent (new `examples/*.aether` file) + run in CLI and GUI:**  
+[AetherLang_create_agent_full_demo.mp4](docs/recordings/AetherLang_create_agent_full_demo.mp4)
 
+(On GitHub, this will appear as a downloadable video file.)
 
+---
 
+## Known issues (current)
 
-🧪 Examples
+- Grammar is duplicated between `lexer.py` and `interpreter.py` (planned to unify).
+- `reflect using gpt ...` does not automatically update memory JSON (by design).
+- Input normalization (e.g., lowercasing events/keys consistently) is still evolving.
+- More unit tests are needed for parser, persistence, and scheduling.
 
-Run included agents from examples/hello.aether:
+---
 
-MyAgent — scholarship-focused self-reflective agent
+## Roadmap
 
-TutorBot — adaptive subject tutor
+- ✅ Week 1 — Setup & lexer
+- ✅ Week 2 — Interpreter (parse + transform + run)
+- ✅ Week 3 — GPT integration (respond / think / reflect)
+- ✅ Week 4 — Scheduling (`every Ns: recall ...`)
+- ✅ Week 5 — Persistent memory across sessions
+- ✅ Week 6 — PyQt5 GUI simulator
+- ✅ Week 7 — Specification + docs
+- ✅ Week 8 — Release packaging + archival (e.g., Zenodo)
 
-HealthHelper — mental health support agent
+---
 
-
-
-👉 To create your own agents, see 4.1 Authoring New Agents in the full specification (spec.md)
-
-
-
-
-
-⚠️ Known Issues
-
-Grammar duplicated between lexer.py and interpreter.py
-
-reflect using gpt does not update memory JSON
-
-Input normalization (e.g., lowercase keys) is pending
-
-More unit tests needed
-
-
-
-
-🗺️ Roadmap — 8-Week MIT Scholarship Plan
-
-Project Goal: Build the world’s first AI-native, time-native programming language, capable of defining 
-memory, goals, and dynamic GPT reasoning — usable for agents, simulations, and autonomous systems.
-
-✅ Week 1 — Setup & Lexer
-
-🚀 Week 2 — Interpreter (AST traversal, agent simulation)
-
-🧠 Week 3 — GPT integration (respond, think, reflect)
-
-⏳ Week 4 — Time-native features (scheduled events)
-
-🧬 Week 5 — Persistent memory, knowledge & reflection
-
-🤖 Week 6 — PyQt5 visual agent simulator (GUI)
-
-📚 Week 7 — Write official specification + docs
-
-🔬 Week 8 — Publish academic paper & project repository (both with Zenodo DOI)
-
-
-
-
-🤝 Contributing
+## Contributing
 
 Contributions, bug reports, and feature requests are welcome.
-Please check the roadmap before submitting a PR.
+If you open a PR, please describe the change clearly and include a small `.aether` example if relevant.
 
+---
 
-
-
-📜 License
+## License
 
 MIT License © 2025 Srijon Kumar Shill
 
+---
 
-
-
-🌟 Acknowledgments
-
-Inspired by conversations with AI agents.
+## Acknowledgments
 
 Built to explore programming beyond code: agents that think, remember, and evolve.
