@@ -4,6 +4,7 @@ import json
 import os
 import threading
 import time
+from pathlib import Path
 
 
 from PyQt5.QtWidgets import (
@@ -36,6 +37,7 @@ except Exception:
 
 MEMORY_DIR = "memory"  # folder where agent JSON files are saved
 EXAMPLES_FILE = "examples/hello.aether"  # optional parsed source for agent list
+EXAMPLES_DIR = Path("examples")          # scan all .aether files here
 
 # Utility: load all agent memory files in memory/
 def available_agents():
@@ -68,6 +70,34 @@ def build_prompt(agent_name, agent_memory, agent_goal, user_input, template=None
     else:
         prompt_style = f'User input: "{user_input}"\n\nMemory:\n{memory_str}\n\nGoal:\n{agent_goal}'
     return prompt_style
+
+def load_agent_def_from_examples(agent_name: str):
+    """
+    Find the first agent definition with this name by parsing examples/*.aether.
+    Returns the parsed agent dict (may include goal/events/schedule), or None.
+    """
+    # robust import (works when running `python aether/gui.py` from repo root)
+    try:
+        from aether.interpreter import parser, AetherTransformer
+    except Exception:
+        from interpreter import parser, AetherTransformer  # fallback if you run from inside aether/
+
+    if not EXAMPLES_DIR.exists():
+        return None
+
+    for path in sorted(EXAMPLES_DIR.glob("*.aether")):
+        try:
+            code = path.read_text(encoding="utf-8")
+            tree = parser.parse(code)
+            transformer = AetherTransformer()
+            agents = transformer.transform(tree)
+            for ag in agents:
+                if ag.get("name") == agent_name:
+                    return ag
+        except Exception as e:
+            print(f"⚠️ Could not parse {path}: {e}")
+
+    return None
 
 # Signals object to communicate between thread and UI
 class Signals(QObject):
@@ -198,20 +228,21 @@ class AetherGUI(QWidget):
         self.agent_name = name
         self.agent_memory = load_agent_memory(name)
 
-        # ⬇️ NEW: also load schedule info from .aether source
-        try:
-          from interpreter import parser, AetherTransformer
-          with open(EXAMPLES_FILE) as f:
-            code = f.read()
-          tree = parser.parse(code)
-          transformer = AetherTransformer()
-          agents = transformer.transform(tree)
-          for ag in agents:
-            if ag["name"] == self.agent_name and "schedule" in ag:
+        # ⬇️ Load schedule/goal/events from ANY examples/*.aether file (not only hello.aether)
+        ag = load_agent_def_from_examples(self.agent_name)
+        if ag:
+            if "schedule" in ag:
                 self.agent_memory["schedule"] = ag["schedule"]
-                break
-        except Exception as e:
-         print("⚠️ Could not load schedule info:", e)
+
+            # if schedule recalls "goal", GUI needs goal too
+            if "goal" in ag and "goal" not in self.agent_memory:
+                self.agent_memory["goal"] = ag["goal"]
+
+            # optional but helpful: enable event templates in GUI
+            if "events" in ag and "events" not in self.agent_memory:
+                self.agent_memory["events"] = ag["events"]
+        else:
+            print("⚠️ No agent definition found in examples/*.aether for:", self.agent_name)
 
         # show memory and goal
         self.show_memory(self.agent_memory)
