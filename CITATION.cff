@@ -1,0 +1,13 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "AetherLang"
+version: "1.1.0"
+authors:
+  - family-names: Kumar Shill
+    given-names: Srijon
+    orcid: "https://orcid.org/0009-0001-6647-2743"
+    affiliation: Independent Researcher, Bangladesh
+repository-code: "https://github.com/Srijon25/AetherLang"
+url: "https://github.com/Srijon25/AetherLang"
+license: "MIT"
+type: software
