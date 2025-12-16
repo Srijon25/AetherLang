@@ -18,7 +18,10 @@
 
 ## 1. Introduction & motivation
 
-AetherLang is an **AI-native, agent-first programming language** designed around **persistent memory**, **declarative goals**, and seamless integration with large language models (GPT). Unlike traditional languages that treat GPT as an external service, AetherLang elevates it to a **first-class primitive**, enabling agents that can think, reflect, and respond while preserving continuity across sessions.
+AetherLang is an **AI-native, agent-first programming language** designed around **persistent memory**, 
+**declarative goals**, and seamless integration with large language models (GPT). Unlike traditional 
+languages that treat GPT as an external service, AetherLang elevates it to a **first-class primitive**, 
+enabling agents that can think, reflect, and respond while preserving continuity across sessions.
 
 Key points:
 
@@ -333,11 +336,13 @@ When a user triggers an event:
    - agent memory (JSON snapshot)  
    - the event response template  
 3. GPT generates a response.  
-4. The interpreter optionally asks GPT to suggest a **single JSON key/value memory update** and merges it only if valid JSON.
+4. The interpreter optionally asks GPT to suggest a **single JSON key/value memory update** and merges it 
+only if valid JSON.
 
 ### Scheduling
 
-`every N s: recall "<key>"` runs as a background daemon thread and prints periodic recalls. In the current implementation, this is wall-clock scheduling using `time.sleep()` and is best-effort.
+`every N s: recall "<key>"` runs as a background daemon thread and prints periodic recalls. In the 
+current implementation, this is wall-clock scheduling using `time.sleep()` and is best-effort.
 
 > Non-goal: This is not a logical timeline engine or deterministic replay system (yet).
 
@@ -381,7 +386,8 @@ Practical Notes:
 
 - For more deterministic memory updates, set the model temperature to 0 (if exposed/configured).  
 - Always validate GPT output before merging into memory.  
-- The reference implementation is not a secure sandbox: do not run untrusted `.aether` files or untrusted prompts.
+- The reference implementation is not a secure sandbox: do not run untrusted `.aether` files or untrusted 
+prompts.
 
 ---
 
@@ -395,13 +401,16 @@ Practical Notes:
 
 ### Runtime updates
 
-- `remember` / `forget` apply immediately in memory **and are persisted immediately** to `memory/<agent>.json`.  
-- GPT-suggested memory updates are applied only if they parse as valid JSON objects (dictionary), and are then persisted.  
+- `remember` / `forget` apply immediately in memory **and are persisted immediately** to `memory/<agent>.
+json`.  
+- GPT-suggested memory updates are applied only if they parse as valid JSON objects (dictionary), and are 
+then persisted.  
 - `reflect using gpt ...` does not modify memory unless you explicitly `remember` something afterward.
 
 ### Exit behavior
 
-- `exit` ends the session; the interpreter also saves memory on exit to ensure the latest memory state is persisted.
+- `exit` ends the session; the interpreter also saves memory on exit to ensure the latest memory state is 
+persisted.
 
 ### Scheduling behavior
 
@@ -441,7 +450,8 @@ Debugging Workflow:
 
 1️⃣ Memory Updates & Automatic Persistence
 
-Commands that modify memory automatically create or update the JSON file (`memory/MyAgent.json`). This includes:
+Commands that modify memory automatically create or update the JSON file (`memory/MyAgent.json`). This 
+includes:
 
 - handling an event (if it triggers a memory update),  
 - `remember "key" = "value"`,  
@@ -483,7 +493,8 @@ Typing `exit` ends the session and ensures memory is saved.
 
 - Add `__main__` guards where needed and unify entrypoints.  
 - Unify grammar across `lexer.py` and `interpreter.py` (avoid duplication).  
-- Add a small CLI argument handler so `python aether/interpreter.py <file.aether>` loads the given file (keep default `examples/hello.aether`).  
+- Add a small CLI argument handler so `python aether/interpreter.py <file.aether>` loads the given file 
+(keep default `examples/hello.aether`).  
 - Normalize event names consistently (recommend: lowercase `on event` names).  
 - Improve GPT JSON parsing robustness (strict validation + schema).  
 - Validate memory keys (avoid whitespace or reserved words).  
